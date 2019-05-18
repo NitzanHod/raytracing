@@ -1,16 +1,30 @@
 /*
 This class implements a simple vector in 3D space
 */
-public class Vector3D extends Point3D{
+public class Vector3D{
 	
 	double x;
 	double y;
 	double z;
 	
-        // construct a vector with the origin as its tail
-        //and a given point as its head
-	Vector3D (double d, double e, double f) {
-		super(d,e,f);
+	// construct a vector with the origin as its tail
+	//and a given point as its head
+	Vector3D (double x, double y, double z) {
+		this.x=x;
+		this.y=y;
+		this.z=z;
+	}
+
+	Vector3D (Vector3D vec) {
+		this.x=vec.x;
+		this.y=vec.y;
+		this.z=vec.z;
+	}
+
+	Vector3D (Point3D p) {
+		this.x=p.x;
+		this.y=p.y;
+		this.z=p.z;
 	}
      
 
@@ -63,9 +77,17 @@ public class Vector3D extends Point3D{
 	public double dot (Point3D vec) {
 		return (vec.x*x+vec.y*y+vec.z*z);
 	}
+
+	public double dot (Vector3D vec) {
+		return (vec.x*x+vec.y*y+vec.z*z);
+	}
 	
 	public double length() {
 		return Math.sqrt(x*x+y*y+z*z);
 	}
 
+	@Override
+	public String toString() {
+		return super.toString()+"("+x+","+y+""+z+")";
+	}
 }

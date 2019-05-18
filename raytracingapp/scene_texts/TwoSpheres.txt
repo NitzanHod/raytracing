@@ -1,0 +1,25 @@
+# Camera: 	px   	py   	pz 	lx  	ly  	lz 	ux  	uy  	uz 	sc_dist	sc_width
+cam 	  	-10    	0	0 	0.5   	0   	0  	0   	0   	1  	1	1
+# Settings: 	bgr  	bgg  	bgb	sh_rays	rec_max
+set 		0 	0  	0   	6 	10
+
+# Material:	dr    	dg    	db	sr   	sg   	sb 	rr   	rg  	rb	phong 	trans
+mtl		0.98  	0.48  	0.4  	1  	1  	1  	0.5    	0.5   	0.5    	4	0.5
+mtl		0.5  	0.67  	0.89  	1  	1  	1  	0.5    	0.5   	0.5    	4	0
+mtl		0.6	0.4	0.9	0.3	0.3	0.3	0	0	0	4	0
+
+# Sphere:	cx   	cy   	cz  	radius 	mat_idx
+sph		3  	 0   	0   	2.5    	1
+sph		7  	 4   	0   	2.5    	2
+sph		7  	 -4   	0   	2.5    	2
+
+# Plane:	nx	ny	nz	offset	mat_idx
+pln		1	0	0	-10	1
+pln		0	0	1	3	2
+
+# Triangles:	p0   	p1   	p2  	 	mat_idx
+trg	       7 1 1        1 3 1     1 2 3		3
+
+# Main Light:	px	py	pz	r	g	b	spec	shadow	width
+lgt		7	8	0	0.5	0.5	0.5	0.7	0.85	1
+lgt		7	0	20	0.5	0.5	0.5	0.7	0.85	1

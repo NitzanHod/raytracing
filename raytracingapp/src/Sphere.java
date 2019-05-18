@@ -13,15 +13,17 @@ public class Sphere extends Element {
 	
         @Override
 	public double IntersectWithRay(Point3D origin, Vector3D dir) {
-		
+
 		//check that distance between vector and line is less than the radius
 		Vector3D helper = new Vector3D(origin,position); //E-C == vector from center of sphere to camera position
+		//System.out.println("helper"+helper.x+" "+helper.y+" "+helper.z);
+		//System.out.println("dir"+dir.x+" "+dir.y+" "+dir.z);
 		double a = dir.dot(dir); //must always be positive
 		double b = 2*(dir.dot(helper));
 		double c = helper.dot(helper)-radius*radius;
-		
+		//System.out.println("sphere ray intersection "+a+" "+b+" "+c);
 		double discreminant = b*b-4*a*c;
-		
+		//System.out.println("discreminant"+discreminant);
 		if (discreminant<0) {return -1;}
 		
 		double t1 = (-b+Math.sqrt(discreminant))/(2*a);
@@ -49,10 +51,10 @@ public class Sphere extends Element {
 	public Vector3D getNormalAt(Point3D p) {
 		// TODO Auto-generated method stub
 		 
-			Vector3D temp =	new Vector3D(p.x-position.x,p.y-position.y,p.z-position.z);
-			temp.normalize();
+		Vector3D temp =	new Vector3D(p.x-position.x,p.y-position.y,p.z-position.z);
+		temp.normalize();
 			
-			return temp;
+		return temp;
 	}
 	
 }
