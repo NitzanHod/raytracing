@@ -421,10 +421,14 @@ public class RayTracer {
 		double cellWidth = screenWidth/superSamplingLevel;
 		double cellHeight = ((imageHeight/imageWidth)*screenWidth)/superSamplingLevel;
 
+		Vector3D randXVector = new Vector3D(qx);
+		Vector3D randYVector = new Vector3D(qy);
+
 		//for each pixel in the screen
 		for (int i=0; i<this.imageWidth; i++) {
 			for (int j=0; j<this.imageHeight; j++) {
-				/*
+
+				Vector3D p_ij = p1m.add(qx.scale(i)).add(qy.scale(j));
 				Vector3D colorSum = new Vector3D(0,0,0);
 				//implementing super sampling
 				//original lines:
@@ -435,7 +439,11 @@ public class RayTracer {
 						double randShift_x = rnd.nextDouble()*cellWidth-(cellWidth/2);
 						double randShift_y = rnd.nextDouble()*cellHeight-(cellHeight/2);
 
-						Vector3D p_ijkl = p1m.add(qx.scale(i+randShift_x)).add(qy.scale(j+randShift_y));
+						//normalize and add random shifts
+						randXVector.normalize().scale(randShift_x);
+						randYVector.normalize().scale(randShift_y);
+
+						Vector3D p_ijkl = p_ij.add(qx.scale(k)).add(qy.scale(l));
 
 						p_ijkl.normalize(); //=rij
 						Vector3D currOutputColor = getColor(cameraPos, p_ijkl, -1, 0);
@@ -444,10 +452,13 @@ public class RayTracer {
 				}
 
 				Vector3D outputColor = colorSum.scale(1 / Math.pow(superSamplingLevel,2)); // from sum to mean
-				*/
+
+
+				/*
+				// without super sampling (put in comment the previous part)
 				Vector3D p_ij = p1m.add(qx.scale(i)).add(qy.scale(j));
 				Vector3D outputColor =  getColor(cameraPos, p_ij, -1, 0);
-
+				*/
 				int x=this.imageWidth-1-i;
 				int y=this.imageHeight-1-j;
 				rgbData[(y * this.imageWidth + x) * 3] = (byte) (outputColor.x*255<=255? outputColor.x*255:255);
