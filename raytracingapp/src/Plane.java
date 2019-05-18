@@ -30,8 +30,14 @@ public class Plane extends Element {
 		//System.out.println("dir "+dir);
 		//System.out.println("denominator "+denominator);
 		if(denominator == 0.0) return -1;
+		
+		Point3D P0 = new Point3D (a*d,b*d,c*d);
+		
+		Vector3D temp = new Vector3D(P0,origin);
+		
+		double t = temp.dot(normal)/denominator;
 
-		double t = - (normal.dot(origin) + d) / denominator;
+	//	double t = - (normal.dot(origin) + d) / denominator;
 		//System.out.println("t "+t);
 		if(t < 0) return -1;
                 

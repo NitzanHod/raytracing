@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -226,12 +227,14 @@ public class RayTracer {
 
 		Point3D intersectionPoint = origin.Move(rayDir.scale(min_t));
 
-		Vector3D DiffueSpecOutputColor = new Vector3D(0,0,0);
+		Vector3D DiffuseOutputColor = new Vector3D(0,0,0);
+		
+		Vector3D SpecOutputColor = new Vector3D(0,0,0);
 
 		int matIdx = elementList.get(minElement).matIdx-1;
 
 		if (min_t<0 || numOfIterations>=maxRecursionLevel) { //no hits or max recursion level
-			return backgroundColor;
+			return new Vector3D(-1,-1,-1); 
 		}
 
 		//send ray from point of intersection in object to light sources to calculate lighting
@@ -251,6 +254,8 @@ public class RayTracer {
 			double q = 2*g / (numShadowRays - 1);
 
 			Vector3D dirLight = new Vector3D(intersectionPoint,lights.get(l).position);
+			
+			double DistanceToLight = dirLight.length();
 			dirLight.normalize();
 
 			//choosing an up vector orthogonal to the light ray, by ensuring w.dot(dirLight)=0
@@ -282,7 +287,6 @@ public class RayTracer {
 			Vector3D randXVector = new Vector3D(qx);
 			Vector3D randYVector = new Vector3D(qy);
 
-
 			//for each light source cell in the area light source
 			for (int i = 0; i<numShadowRays; i++) {
 				for (int j = 0; j<numShadowRays ; j++) {
@@ -295,9 +299,8 @@ public class RayTracer {
 					double randShift_y = rnd.nextDouble()*cellSize-(cellSize/2);
 
 					//normalize and add random shifts
-					randXVector.normalize().scale(randShift_x);
-					randYVector.normalize().scale(randShift_y);
-
+					randXVector = randXVector.normalize().scale(randShift_x);
+					randYVector = randYVector.normalize().scale(randShift_y);
 
 					//calculate final ray direction and normalize
 					Vector3D pij = p1m.add(qx.scale(i)).add(qy.scale(j));
@@ -306,21 +309,29 @@ public class RayTracer {
 					Point3D lightPoint = new Point3D(lights.get(l).position.x+pij.x,lights.get(l).position.y+pij.y,lights.get(l).position.z+pij.z);
 					lightPoint = lightPoint.Move(randXVector).Move(randYVector);
 
-
 					pij.normalize();
 
 					//calculate t required for full segment
 					Vector3D dir = new Vector3D(intersectionPoint,lightPoint);
 					double req_t = dir.length();
 					dir.normalize();
-
+					
+					//check if normal is in the right direction
+					if ((dir.dot(elementList.get(minElement).getNormalAt(intersectionPoint))>0.0)) {
+						shadowflag = true;
+					} else {
 					//calculate
 					for (int k=0; k<elementList.size(); k++) {
+						
+						if (minElement==k) {
+							continue;
+						}
 
-						if (elementList.get(k).IntersectWithRay(lightPoint, dir)>0 && elementList.get(k).IntersectWithRay(lightPoint, dir)<(req_t-0.1)) {
+						if (elementList.get(k).IntersectWithRay(lightPoint, dir)>0 && elementList.get(k).IntersectWithRay(lightPoint, dir)<(req_t)) {
 							shadowflag = true;
 							break;
 						}
+					}
 					}
 
 					if (!shadowflag) {
@@ -330,53 +341,65 @@ public class RayTracer {
 			}
 
 			shadowPercent = numOfHits/(numShadowRays*numShadowRays);
+			
+		//	System.out.println(shadowPercent);
 
+			Vector3D L = new Vector3D(intersectionPoint,lights.get(l).position);
+			L.normalize();
+			Vector3D N = elementList.get(minElement).getNormalAt(intersectionPoint);
+			Vector3D V = new Vector3D(cameraPos,intersectionPoint);
+			V.normalize();
+			Vector3D R = N.scale(2*N.dot(L)).subtract(L);
 
+			R.normalize();
+			double specular = V.dot(R)<0? -V.dot(R):0;
+			
+			
 			if (shadowPercent>0) { //if light hits point
 
 				//light hits object, calculate lighting using phong model
-				Vector3D L = new Vector3D(intersectionPoint,lights.get(l).position);
-				L.normalize();
-				Vector3D N = elementList.get(minElement).getNormalAt(intersectionPoint);
-				Vector3D V = new Vector3D(cameraPos,intersectionPoint);
-				V.normalize();
-				Vector3D R = N.scale(2*N.dot(L)).subtract(L);
 
-				R.normalize();
-				double specular = V.dot(R);
 
 				//			if ( N.dot(L)>0 && lights.get(l).shadowIntensity>0 ) { //self occlusion
 				//				DiffueSpecOutputColor = DiffueSpecOutputColor.add(materials.get(matIdx).diffuseColor.scale(1-lights.get(l).shadowIntensity));
 				//			} else {
-				DiffueSpecOutputColor = DiffueSpecOutputColor.add((lights.get(l).color.multByVec(materials.get(matIdx).diffuseColor).add
-						(materials.get(matIdx).specularColor.scale(lights.get(l).specularIntensity*Math.pow(specular,materials.get(matIdx).phongSpecCoeff)))).scale(shadowPercent));
+				double factor = L.dot(N)<0? -L.dot(N):0;
+				DiffuseOutputColor = DiffuseOutputColor.add((lights.get(l).color.multByVec(materials.get(matIdx).diffuseColor)).scale(shadowPercent*factor));
+				SpecOutputColor = SpecOutputColor.add(materials.get(matIdx).specularColor.multByVec(lights.get(l).color).scale(shadowPercent*lights.get(l).specularIntensity*Math.pow(specular,materials.get(matIdx).phongSpecCoeff)));
 
+				DiffuseOutputColor = DiffuseOutputColor.add(materials.get(matIdx).diffuseColor.multByVec(lights.get(l).color).scale(1.0-lights.get(l).shadowIntensity));
 			} else {
 
-				DiffueSpecOutputColor = DiffueSpecOutputColor.add(materials.get(matIdx).diffuseColor.scale(1-lights.get(l).shadowIntensity));
+				DiffuseOutputColor = DiffuseOutputColor.add(materials.get(matIdx).diffuseColor.multByVec(lights.get(l).color).scale(1.0-lights.get(l).shadowIntensity));
 			}
 
 
 		}
+	
+		Vector3D DiffuseSpecOutputColor = DiffuseOutputColor.add(SpecOutputColor);
 
 		//calculate reflection color
 		Vector3D N = elementList.get(minElement).getNormalAt(intersectionPoint);
 		Vector3D reflectedDir = N.scale(2*N.dot(rayDir.scale(-1))).subtract(rayDir.scale(-1));
 		reflectedDir.normalize();
 		Vector3D reflectionColor = getColor(intersectionPoint,reflectedDir,minElement,numOfIterations+1);
+		if (reflectionColor.x<0) {
+			reflectionColor = new Vector3D(0,0,0);
+		} 
 		reflectionColor = reflectionColor.multByVec(materials.get(matIdx).reflectionColor);
-		//TODO: do not reflect background
-
+		
 		//calculate transparency Color
-		Vector3D transColor = backgroundColor;
+		Vector3D transColor = new Vector3D(0,0,0);
 		if (materials.get(matIdx).transperancy>0) {
 			transColor = getColor(intersectionPoint,rayDir,minElement,numOfIterations+1);
-
+			if (transColor.x<0) {
+				transColor = backgroundColor;
+			}
 		}
 
 		double transVal = materials.get(matIdx).transperancy;
-		return transColor.scale(transVal).add(DiffueSpecOutputColor.scale(1.0-transVal)).add(reflectionColor);
-		//	return DiffueSpecOutputColor;
+	return transColor.scale(transVal).add(DiffuseSpecOutputColor.scale(1.0-transVal)).add(reflectionColor);
+	//		return DiffuseSpecOutputColor;
 	}
 
 	/**
@@ -409,6 +432,8 @@ public class RayTracer {
 		b.normalize();
 
 		Vector3D v = t.cross(b);
+		
+		v.normalize();
 
 		double gx = screenWidth/2; double gy=imageHeight/imageWidth*gx;
 
@@ -418,8 +443,11 @@ public class RayTracer {
 
 		Random rnd = new Random();
 
-		double cellWidth = screenWidth/superSamplingLevel;
-		double cellHeight = ((imageHeight/imageWidth)*screenWidth)/superSamplingLevel;
+		//double cellWidth = screenWidth/superSamplingLevel;
+		//double cellHeight = ((imageHeight/imageWidth)*screenWidth)/superSamplingLevel;
+		double cellWidth = qx.length();
+		double cellHeight = qy.length();
+		
 
 		Vector3D randXVector = new Vector3D(qx);
 		Vector3D randYVector = new Vector3D(qy);
@@ -440,15 +468,21 @@ public class RayTracer {
 						double randShift_y = rnd.nextDouble()*cellHeight-(cellHeight/2);
 
 						//normalize and add random shifts
-						randXVector.normalize().scale(randShift_x);
-						randYVector.normalize().scale(randShift_y);
+						randXVector=(randXVector.normalize()).scale(randShift_x);
+						randYVector=(randYVector.normalize()).scale(randShift_y);
 
-						Vector3D p_ijkl = p_ij.add(qx.scale(k)).add(qy.scale(l));
+						Vector3D p_ijkl = p_ij;//.add(randXVector).add(randYVector);
+						
 
 						p_ijkl.normalize(); //=rij
 						Vector3D currOutputColor = getColor(cameraPos, p_ijkl, -1, 0);
+						if (currOutputColor.x<0) {
+							colorSum=backgroundColor;
+						}
 						colorSum = colorSum.add(currOutputColor);
+
 					}
+					
 				}
 
 				Vector3D outputColor = colorSum.scale(1 / Math.pow(superSamplingLevel,2)); // from sum to mean
@@ -459,11 +493,21 @@ public class RayTracer {
 				Vector3D p_ij = p1m.add(qx.scale(i)).add(qy.scale(j));
 				Vector3D outputColor =  getColor(cameraPos, p_ij, -1, 0);
 				*/
-				int x=this.imageWidth-1-i;
+				int x=i;//this.imageWidth-1-i;
 				int y=this.imageHeight-1-j;
-				rgbData[(y * this.imageWidth + x) * 3] = (byte) (outputColor.x*255<=255? outputColor.x*255:255);
-				rgbData[(y * this.imageWidth + x) * 3+1] = (byte) (outputColor.y*255<=255? outputColor.y*255:255);
-				rgbData[(y * this.imageWidth + x) * 3+2] = (byte) (outputColor.z*255<=255? outputColor.z*255:255);
+				
+				double max=-1;
+				double[] RGB_arr = {outputColor.x,outputColor.y,outputColor.z};
+				for (int k=0; k<3; k++) {
+					if (RGB_arr[k]>max){
+						max=RGB_arr[k];
+					}
+				
+				}
+				
+				rgbData[(y * this.imageWidth + x) * 3] = (byte) (outputColor.x*255<=255?outputColor.x*255: 255);//(outputColor.x/max)*255);
+				rgbData[(y * this.imageWidth + x) * 3+1] = (byte) (outputColor.y*255<=255? outputColor.y*255: 255);//(outputColor.y/max)*255);
+				rgbData[(y * this.imageWidth + x) * 3+2] = (byte) (outputColor.z*255<=255? outputColor.z*255: 255);//(outputColor.z/max)*255);
 
 			}
 		}
